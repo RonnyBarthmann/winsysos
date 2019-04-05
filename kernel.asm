@@ -1,6 +1,6 @@
 
-VERSION_STRING_1 equ '[Version: 0.0.4 Beta]'
-VERSION_STRING_2 equ 'v0.0.4 Beta'
+VERSION_STRING_1 equ '[Version: 0.0.5 Beta]'
+VERSION_STRING_2 equ 'v0.0.5 Beta'
 
 InitSegment:
 	MOV AX, CS		; Kopiere das CodeSegment nach AX
@@ -69,6 +69,9 @@ Welcome:
 
 
 start:
+	MOV AX, CS
+	MOV DS, AX
+	MOV ES, AX
 	MOV SI, PrefixS
 	CALL WriteString
 	MOV DI, Command
@@ -135,6 +138,16 @@ start:
 	MOV DI, Command
 	REP CMPSB
 	jz RawWrite1
+	MOV CX, 9
+	MOV SI, FReadCd
+	MOV DI, Command
+	REP CMPSB
+	jz FullRead1
+	MOV CX, 10
+	MOV SI, FWriteC
+	MOV DI, Command
+	REP CMPSB
+	jz FullWrite1
 	MOV CX, 5
 	MOV AX, 5
 	MOV SI, readCmd
@@ -165,6 +178,18 @@ start:
 	MOV DI, Command
 	REP CMPSB
 	jz RawWrite2
+	MOV CX, 9
+	MOV AX, 9
+	MOV SI, fReadCd
+	MOV DI, Command
+	REP CMPSB
+	jz FullRead2
+	MOV CX, 10
+	MOV AX, 10
+	MOV SI, fWriteC
+	MOV DI, Command
+	REP CMPSB
+	jz FullWrite2
 	MOV CX, 9
 	MOV SI, RegComd
 	MOV DI, Command
@@ -291,12 +316,23 @@ start:
 	MOV DI, Command
 	REP CMPSB
 	jz FileInfo2
+	MOV CX, 5
+	MOV AX, 5
+	MOV SI, typeCmd
+	MOV DI, Command
+	REP CMPSB
+	jz Type2
+	MOV CX, 5
+	MOV SI, TypeCmd
+	MOV DI, Command
+	REP CMPSB
+	jz Type1
 	MOV CX, 1
 	MOV SI, NoneCmd
 	MOV DI, Command
 	REP CMPSB
 	jz start
-	MOV CX, 20
+	MOV CX, 19
 	MOV DX, UnknFlg
 	CALL SetFlag
 	MOV SI, Unknown
@@ -317,11 +353,11 @@ Registry:
 	MOV SI, Pass
 	MOV DI, Buffer
 	REP CMPSB
-	MOV SI, NewLine
-	CALL WriteString
 	je .true
 	jmp .false
       .true:
+	MOV SI, NewLine
+	CALL WriteString
 	MOV SI, NameString
 	CALL WriteString
 	MOV DI, Name
@@ -363,6 +399,9 @@ Clear:
 Help:
 	MOV SI, NewLine
 	CALL WriteString
+	MOV CX, 26
+	MOV DX, VerFlag
+	Call SetFlag
 	MOV SI, VerStrg
 	CALL WriteString
 	MOV SI, NewLine
@@ -386,6 +425,9 @@ Help:
 Info:
 	MOV SI, NewLine
 	CALL WriteString
+	MOV CX, 26
+	MOV DX, VerFlag
+	Call SetFlag
 	MOV SI, VerStrg
 	CALL WriteString
 	MOV SI, NewLine
@@ -438,6 +480,15 @@ Changes:
 	CALL WriteString
 	MOV SI, Change4
 	CALL WriteString
+	CALL KeyWait
+	CALL ClearScreen
+	MOV AX, 0
+	MOV BX, 0
+	CALL SetCursor
+	MOV SI, NewLine
+	CALL WriteString
+	MOV SI, Change5
+	CALL WriteString
 	MOV SI, NewLine
 	CALL WriteString
 	jmp start
@@ -451,7 +502,7 @@ Read1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 73
+	MOV CX, 72
 	MOV DX, ReadFlg
 	CALL SetFlag
 	MOV SI, ReadStr
@@ -488,7 +539,7 @@ Write1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 79
+	MOV CX, 78
 	MOV DX, WriteFg
 	CALL SetFlag
 	MOV SI, WriteSt
@@ -527,7 +578,7 @@ Run1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 78
+	MOV CX, 70
 	MOV DX, RunFlag
 	CALL SetFlag
 	MOV SI, RunStrg
@@ -549,6 +600,8 @@ Run:
 	CALL WriteString
 	MOV SI, NewLine
 	CALL WriteString
+	PUSH CS
+	PUSH start
 	PUSH word 07C0h
 	PUSH word 0000h
 	RETF
@@ -567,7 +620,7 @@ RawRead1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 73
+	MOV CX, 72
 	MOV DX, ReadFlg
 	CALL SetFlag
 	MOV SI, ReadStr
@@ -708,7 +761,7 @@ RawWrite1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 79
+	MOV CX, 78
 	MOV DX, WriteFg
 	CALL SetFlag
 	MOV SI, WriteSt
@@ -722,10 +775,117 @@ RawWrite1:
 RawWrite:
 	MOV SI, NewLine
 	CALL WriteString
-	MOV CX, 46
+	MOV CX, 45
 	MOV DX, NoSuppF
 	CALL SetFlag
 	MOV SI, NoSuppS
+	CALL WriteString
+	MOV SI, NewLine
+	CALL WriteString
+	jmp start
+
+FullRead2:
+	MOV BX, Command
+	ADD BX, AX
+	CALL Dec2Word
+	JMP FullRead
+FullRead1:
+	MOV SI, NewLine
+	CALL WriteString
+	CALL InitFloppy
+	MOV CX, 72
+	MOV DX, ReadFlg
+	CALL SetFlag
+	MOV SI, ReadStr
+	CALL WriteString
+	MOV SI, ChoiceS
+	CALL WriteString
+	MOV DI, Buffer
+	CALL ReadString
+	MOV BX, Buffer
+	CALL Dec2Word
+FullRead:
+	MOV BX, Buffer
+	MOV CX, 1
+	MOV DX, 0
+	CALL ReadFloppy
+	MOV SI, NewLine
+	CALL WriteString
+	MOV SI, NewLine
+	CALL WriteString
+	MOV SI, Buffer
+	MOV CX, 512
+	CALL WriteString2
+	MOV SI, NewLine
+	CALL WriteString
+	MOV SI, NewLine
+	CALL WriteString
+	jmp start
+
+FullWrite2:
+	MOV BX, Command
+	ADD BX, AX
+	CALL Dec2Word
+	JMP FullWrite
+FullWrite1:
+	MOV SI, NewLine
+	CALL WriteString
+	CALL InitFloppy
+	MOV CX, 78
+	MOV DX, WriteFg
+	CALL SetFlag
+	MOV SI, WriteSt
+	CALL WriteString
+	MOV SI, ChoiceS
+	CALL WriteString
+	MOV DI, Buffer
+	CALL ReadString
+	MOV BX, Buffer
+	CALL Dec2Word
+FullWrite:
+	MOV SI, NewLine
+	CALL WriteString
+	MOV CX, 45
+	MOV DX, NoSuppF
+	CALL SetFlag
+	MOV SI, NoSuppS
+	CALL WriteString
+	MOV SI, NewLine
+	CALL WriteString
+	jmp start
+
+Type2:
+	MOV BX, Command
+	ADD BX, AX
+	CALL Dec2Word
+	JMP Type
+Type1:
+	MOV SI, NewLine
+	CALL WriteString
+	CALL InitFloppy
+	MOV CX, 72
+	MOV DX, ReadFlg
+	CALL SetFlag
+	MOV SI, ReadStr
+	CALL WriteString
+	MOV SI, ChoiceS
+	CALL WriteString
+	MOV DI, Buffer
+	CALL ReadString
+	MOV BX, Buffer
+	CALL Dec2Word
+Type:
+	MOV BX, Buffer
+	MOV CX, 1
+	MOV DX, 0
+	CALL ReadFloppy
+	MOV SI, NewLine
+	CALL WriteString
+	MOV SI, NewLine
+	CALL WriteString
+	MOV SI, Buffer
+	CALL TypeString
+	MOV SI, NewLine
 	CALL WriteString
 	MOV SI, NewLine
 	CALL WriteString
@@ -740,7 +900,7 @@ Editor1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 73
+	MOV CX, 72
 	MOV DX, ReadFlg
 	CALL SetFlag
 	MOV SI, ReadStr
@@ -763,7 +923,7 @@ MakeDir2:
 MakeDir1:
 	MOV SI, NewLine
 	CALL WriteString
-	MOV CX, 46
+	MOV CX, 45
 	MOV DX, NoSuppF
 	CALL SetFlag
 	MOV SI, NoSuppS
@@ -776,7 +936,7 @@ ChangeDir2:
 ChangeDir1:
 	MOV SI, NewLine
 	CALL WriteString
-	MOV CX, 46
+	MOV CX, 45
 	MOV DX, NoSuppF
 	CALL SetFlag
 	MOV SI, NoSuppS
@@ -803,7 +963,7 @@ CopyFile1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 77
+	MOV CX, 76
 	MOV DX, Copy1Fg
 	CALL SetFlag
 	MOV SI, Copy1St
@@ -820,7 +980,7 @@ CopyFile1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 76
+	MOV CX, 75
 	MOV DX, Copy2Fg
 	CALL SetFlag
 	MOV SI, Copy2St
@@ -833,6 +993,10 @@ CopyFile1:
 	CALL Dec2Word
 	MOV BX, AX
 	MOV AX, [temp0w]
+	PUSHAD
+	MOV SI, NewLine
+	CALL WriteString
+	POPAD
 CopyFile:
 	PUSHAD
 	MOV SI, NewLine
@@ -886,7 +1050,7 @@ MoveFile1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 80
+	MOV CX, 79
 	MOV DX, Move1Fg
 	CALL SetFlag
 	MOV SI, Move1St
@@ -903,7 +1067,7 @@ MoveFile1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 79
+	MOV CX, 78
 	MOV DX, Move2Fg
 	CALL SetFlag
 	MOV SI, Move2St
@@ -916,6 +1080,10 @@ MoveFile1:
 	CALL Dec2Word
 	MOV BX, AX
 	MOV AX, [temp0w]
+	PUSHAD
+	MOV SI, NewLine
+	CALL WriteString
+	POPAD
 MoveFile:
 	PUSHAD
 	MOV SI, NewLine
@@ -967,7 +1135,7 @@ DelFile1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 76
+	MOV CX, 74
 	MOV DX, DelFlag
 	CALL SetFlag
 	MOV SI, DelStrg
@@ -996,7 +1164,7 @@ ListDir2:
 ListDir1:
 	MOV SI, NewLine
 	CALL WriteString
-	MOV CX, 46
+	MOV CX, 45
 	MOV DX, NoSuppF
 	CALL SetFlag
 	MOV SI, NoSuppS
@@ -1009,7 +1177,7 @@ FileInfo2:
 FileInfo1:
 	MOV SI, NewLine
 	CALL WriteString
-	MOV CX, 46
+	MOV CX, 45
 	MOV DX, NoSuppF
 	CALL SetFlag
 	MOV SI, NoSuppS
@@ -1026,7 +1194,7 @@ Reset:
 	MOV CX, 1
 	MOV DX, 0
 	CALL WriteFloppy
-	MOV CX, 30
+	MOV CX, 29
 	MOV DX, ResetFg
 	CALL SetFlag
 	MOV SI, ResetSt
@@ -1297,7 +1465,41 @@ WriteString: ; SI = String
       WriteStringEnd:
 	RETN ; No               ; Funktionsruecksprung
 
+TypeString: ; SI = String
+	PUSHAD
+	CALL ClearScreen
+	POPAD
+      TypeStringNext:
+	LODSB			; Zeichen nach AL kopieren
+	CMP AL, 0		; Ist AL = 0 ?
+	JE TypeStringEnd       ; dann Abbruch
+	CMP AL, 13		 ; Ist AL = 13 ?
+	JE TypeNextLine       ; dann Abbruch
+	MOV AH, 0Eh		; Funktion
+	MOV BH, 0		; Bildschirmseite
+	INT 10h 		; Schreiben
+	JMP TypeStringNext	   ; Naechster Durchlauf
+      TypeNextLine:
+	MOV AH, 0Eh		; Funktion
+	MOV BH, 0		; Bildschirmseite
+	INT 10h 		; Schreiben
+	PUSHAD
+	CALL GetCursor
+	CMP BX, 24
+	JE WaitForKeyPress
+	POPAD
+	JMP TypeStringNext	   ; Naechster Durchlauf
+      WaitForKeyPress:
+	CALL WaitForKey
+	POPAD
+	JMP TypeStringNext	   ; Naechster Durchlauf
+      TypeStringEnd:
+	RETN ; No               ; Funktionsruecksprung
+
 ReadString2: ; DI = Buffer
+	PUSH [TempWord]
+	MOV [TempWord], DI
+      ReadString2Next:
 	MOV AH, 0		; Funktion
 	INT 16h 		; Zeichen einlesen
 	CMP AL, 27		; Ist AL = 27 ?
@@ -1314,7 +1516,7 @@ ReadString2: ; DI = Buffer
 	MOV AH, 0Eh		; Funktion
 	MOV BH, 0		; Bildschirmseite
 	INT 10h 		; Schreiben
-	JMP ReadString2 	 ; Naechster Durchlauf
+	JMP ReadString2Next	 ; Naechster Durchlauf
       ReadNextLine:
 	STOSB			; AL speichern kopieren
 	MOV AH, 0Eh		; Funktion
@@ -1325,8 +1527,10 @@ ReadString2: ; DI = Buffer
 	MOV AH, 0Eh		; Funktion
 	MOV BH, 0		; Bildschirmseite
 	INT 10h 		; Schreiben
-	JMP ReadString2 	 ; Naechster Durchlauf
+	JMP ReadString2Next	 ; Naechster Durchlauf
       ClearChar2:
+	CMP [TempWord], DI
+	je ReadString2Next
 	SUB DI, 1		; Zeichen Loeschen
 	MOV AH, 0Eh		; Funktion
 	MOV BH, 0		; Bildschirmseite
@@ -1339,14 +1543,18 @@ ReadString2: ; DI = Buffer
 	MOV AH, 0Eh		; Funktion
 	MOV BH, 0		; Bildschirmseite
 	INT 10h 		; Schreiben
-	JMP ReadString2 	 ; Naechster Durchlauf
+	JMP ReadString2Next	 ; Naechster Durchlauf
       ReadString2End:
 	MOV AL, 0		; Stringende
 	STOSB			; AL speichern kopieren
+	POP [TempWord]
 	RETN ; No               ; Funktionsruecksprung
 
 
 ReadString: ; DI = Buffer
+	PUSH [TempWord]
+	MOV [TempWord], DI
+      ReadStringNext:
 	MOV AH, 0		; Funktion
 	INT 16h 		; Zeichen einlesen
 	CMP AL, 27		; Ist AL = 27 ?
@@ -1363,8 +1571,10 @@ ReadString: ; DI = Buffer
 	MOV AH, 0Eh		; Funktion
 	MOV BH, 0		; Bildschirmseite
 	INT 10h 		; Schreiben
-	JMP ReadString		; Naechster Durchlauf
+	JMP ReadStringNext	; Naechster Durchlauf
       ClearChar:
+	CMP [TempWord], DI
+	je ReadStringNext
 	SUB DI, 1		; Zeichen Loeschen
 	MOV AH, 0Eh		; Funktion
 	MOV BH, 0		; Bildschirmseite
@@ -1377,13 +1587,17 @@ ReadString: ; DI = Buffer
 	MOV AH, 0Eh		; Funktion
 	MOV BH, 0		; Bildschirmseite
 	INT 10h 		; Schreiben
-	JMP ReadString		; Naechster Durchlauf
+	JMP ReadStringNext	; Naechster Durchlauf
       ReadStringEnd:
 	MOV AL, 0		; Stringende
 	STOSB			; AL speichern kopieren
+	POP [TempWord]
 	RETN ; No               ; Funktionsruecksprung
 
 ReadPassword: ; DI = Buffer
+	PUSH [TempWord]
+	MOV [TempWord], DI
+      ReadPasswordNext:
 	MOV AH, 0		; Funktion
 	INT 16h 		; Zeichen einlesen
 	CMP AL, 27		; Ist AL = 27 ?
@@ -1392,13 +1606,16 @@ ReadPassword: ; DI = Buffer
 	JE ReadPasswordEnd	  ; dann Abbruch
 	CMP AL, 8		; Ist AL = 8 ?
 	JE ClearPass		; dann Zeichen loeschen
+	XOR AL, 170
 	STOSB			; AL speichern kopieren
 	MOV AL, 42
 	MOV AH, 0Eh		; Funktion
 	MOV BH, 0		; Bildschirmseite
 	INT 10h 		; Schreiben
-	JMP ReadPassword	  ; Naechster Durchlauf
+	JMP ReadPasswordNext	  ; Naechster Durchlauf
       ClearPass:
+	CMP [TempWord], DI
+	je ReadPasswordNext
 	SUB DI, 1		; Zeichen Loeschen
 	MOV AH, 0Eh		; Funktion
 	MOV BH, 0		; Bildschirmseite
@@ -1411,10 +1628,11 @@ ReadPassword: ; DI = Buffer
 	MOV AH, 0Eh		; Funktion
 	MOV BH, 0		; Bildschirmseite
 	INT 10h 		; Schreiben
-	JMP ReadPassword	  ; Naechster Durchlauf
+	JMP ReadPasswordNext	  ; Naechster Durchlauf
       ReadPasswordEnd:
 	MOV AL, 0		; Stringende
 	STOSB			; AL speichern kopieren
+	POP [TempWord]
 	RETN ; No               ; Funktionsruecksprung
 
 KeyWait: ; No
@@ -1431,6 +1649,17 @@ KeyWait: ; No
 	JE KeyWaitEnd		; dann Abbruch
 	JMP KeyWait		; Naechster Durchlauf
       KeyWaitEnd:
+	RETN ; No               ; Funktionsruecksprung
+
+WaitForKey: ; No
+	MOV AH, 0		; Funktion
+	INT 16h 		; Zeichen einlesen
+	CMP AL, 13		; Ist AL = 13 ?
+	JE WaitForKeyEnd	   ; dann Abbruch
+	CMP AL, 32		; Ist AL = 32 ?
+	JE WaitForKeyEnd	   ; dann Abbruch
+	JMP WaitForKey		   ; Naechster Durchlauf
+      WaitForKeyEnd:
 	RETN ; No               ; Funktionsruecksprung
 
 WriteChr: ; AL = Ascii
@@ -1519,7 +1748,7 @@ WriteColorWarning: ; No
 	CALL SetFlag2
 	POPAD
 	INC BX
-	MOV CX, 71
+	MOV CX, 68
 	MOV DX, Warnin3
 	PUSHAD
 	CALL SetFlag2
@@ -1552,7 +1781,6 @@ GetFloppyStatus: ; AX = Floppy
 
 ReadFloppy: ; AX = Sektor / BX = Buffer / CX = Anzahl / DX = Floppy / ES = Offset
 	PUSHAD
-	ADD AX, 1
 	PUSH BX
 	PUSH CX
 	PUSH DX
@@ -1562,13 +1790,13 @@ ReadFloppy: ; AX = Sektor / BX = Buffer / CX = Anzahl / DX = Floppy / ES = Offse
 	DIV BX
 	MOV [Sektor], DL
 	MOV [Track], AL
-	AND AX, 1
-	MOV [Head], AL
 	MOV AH, 0
 	MOV AL, [Track]
 	MOV BL, 2
 	DIV BL
 	MOV [Track], AL
+	MOV [Head], AH
+	ADD [Sektor], 1
 	POP ES
 	POP DX
 	POP CX
@@ -1587,7 +1815,6 @@ ReadFloppy: ; AX = Sektor / BX = Buffer / CX = Anzahl / DX = Floppy / ES = Offse
 
 WriteFloppy: ; AX = Sektor / BX = Buffer / CX = Anzahl / DX = Floppy / ES = Offset
 	PUSHAD
-	ADD AX, 1
 	PUSH BX
 	PUSH CX
 	PUSH DX
@@ -1597,13 +1824,13 @@ WriteFloppy: ; AX = Sektor / BX = Buffer / CX = Anzahl / DX = Floppy / ES = Offs
 	DIV BX
 	MOV [Sektor], DL
 	MOV [Track], AL
-	AND AX, 1
-	MOV [Head], AL
 	MOV AH, 0
 	MOV AL, [Track]
 	MOV BL, 2
 	DIV BL
 	MOV [Track], AL
+	MOV [Head], AH
+	ADD [Sektor], 1
 	POP ES
 	POP DX
 	POP CX
@@ -1854,7 +2081,7 @@ String2Value_8: ; Unterroutine
       .error:
 	MOV SI, NewLine
 	CALL WriteString
-	MOV CX, 63
+	MOV CX, 62
 	MOV DX, Val8Flg
 	CALL SetFlag
 	MOV SI, Val8Str
@@ -1896,7 +2123,7 @@ String2Value_4: ; Unterroutine
       .error:
 	MOV SI, NewLine
 	CALL WriteString
-	MOV CX, 62
+	MOV CX, 61
 	MOV DX, Val4Flg
 	CALL SetFlag
 	MOV SI, Val4Str
@@ -1936,7 +2163,7 @@ String2Value_2: ; Unterroutine
       .error:
 	MOV SI, NewLine
 	CALL WriteString
-	MOV CX, 62
+	MOV CX, 61
 	MOV DX, Val2Flg
 	CALL SetFlag
 	MOV SI, Val2Str
@@ -1975,7 +2202,7 @@ String2Value_1: ; Unterroutine
       .error:
 	MOV SI, NewLine
 	CALL WriteString
-	MOV CX, 63
+	MOV CX, 61
 	MOV DX, Val1Flg
 	CALL SetFlag
 	MOV SI, Val1Str
@@ -2229,7 +2456,7 @@ Dec2Value: ; Unterroutine
       .error:
 	MOV SI, NewLine
 	CALL WriteString
-	MOV CX, 54
+	MOV CX, 53
 	MOV DX, Dec2Flg
 	CALL SetFlag
 	MOV SI, Dec2Str
@@ -2539,20 +2766,26 @@ DataArea:
 	fiInCmd db 'fi',32
 	RunComd db 'run',0
 	runComd db 'run',32
+	FReadCd db 'fullread',0
+	FWriteC db 'fullwrite',0
+	fReadCd db 'fullread',32
+	fWriteC db 'fullwrite',32
+	TypeCmd db 'type',0
+	typeCmd db 'type',32
 	NoneCmd db 0
 	PrefixS db 'CMD> ',0
       StringArea:
-	Unknown db 'Ungueltiger Befehl !',13,10,0
-	UnknFlg db 0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Fh
-	ResetSt db 'System wird zurueckgesetzt ...',13,10,0
-	ResetFg db 0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,07h,07h,07h
+	Unknown db 'UngÅltiger Befehl !',13,10,0
+	UnknFlg db 0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Fh
+	ResetSt db 'System wird zurÅckgesetzt ...',13,10,0
+	ResetFg db 0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,07h,07h,07h
 	ExitStr db 'Bitte den PC ausschalten ...',13,10,0
 	ExitFlg db 0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,07h,07h,07h
 	VerStrg db 'WindowSystemOS ',VERSION_STRING_2,13,10,0
 	VerFlag db 0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,07h,0Fh,0Fh,07h,07h,07h,07h,07h,0Ch,0Ch,0Ch,0Ch
 	Warning db 'ACHTUNG: WinSysOS ist noch in der Entwicklungsphase',13,10
 		db '         es wird keinerlei Garantie gegeben ausserdem haftet',13,10
-		db '         die WinSysCompany weder fuer Daten noch fuer Hardware-Schaeden',13,10,0
+		db '         die WinSysCompany weder fÅr Daten noch fÅr Hardware-SchÑden',13,10,0
 	Warnin1 db 0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,07h,07h,07h,07h
 		db 07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch
 		db 0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch
@@ -2560,33 +2793,36 @@ DataArea:
 		db 0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,07h,07h,07h,07h,07h,07h
 		db 07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h
 	Warnin3 db 07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh
-		db 0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,0Ch,0Ch,0Ch,0Ch
-		db 0Ch,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch
-		db 0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch
+		db 0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,0Ch,0Ch,0Ch,0Ch
+		db 0Ch,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch
+		db 0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch
 	HelpSt1 db ' Befehle in WindowSystemOS :',13,10
 		db '',13,10
-		db '  Befehl   | Erklaerung',13,10
+		db '  Befehl   | ErklÑrung',13,10
 		db '  ---------+---------------------------------',13,10
-		db '  exit     | Faehrt WinSysOS herunter',13,10
+		db '  exit     | FÑhrt WinSysOS herunter',13,10
 		db '  ver      | Zeigt die Versionsnummer an',13,10
 		db '  help     | Zeigt diese Hilfe an',13,10
 		db '  info     | Zeigt Informationen zu WinSysOS an',13,10
-		db '  changes  | Zeigt den Verlauf der Aenderungen an',13,10
-		db '  cls      | Loescht den Bildschirminhalt',13,10
+		db '  changes  | Zeigt den Verlauf der énderungen an',13,10
+		db '  cls      | Lîscht den Bildschirminhalt',13,10
 		db '  read     | Sektor auslesen und ausgeben',13,10
 		db '  write    | Text auf einen Sektor schreiben',13,10
 		db '  rawread  | Sektor auslesen und ausgeben ( rohformat )',13,10
-		db '  registry | Aendernt die Benutzerdaten',13,10
+		db '  registry | éndernt die Benutzerdaten',13,10
 		db '',13,10,0
 	HelpSt2 db ' Befehle in WindowSystemOS :',13,10
 		db '',13,10
-		db '  Befehl   | Erklaerung',13,10
+		db '  Befehl   | ErklÑrung',13,10
 		db '  ---------+---------------------------------',13,10
 	     ;  db '  rawwrite | Text auf einen Sektor schreiben ( rohformat )',13,10
+	     ;  db '  fullwrite| Text auf einen Sektor schreiben ( 512 Byte )',13,10
+		db '  fullread | Sektor auslesen und ausgeben ( 512 Byte )',13,10
 		db '  copy     | Kopiert einen Sektor',13,10
 		db '  move     | Verschiebt einen Sektor',13,10
-		db '  del      | Loescht einen Sektor',13,10
-		db '  run      | Fuehrt einen Sektor aus',13,10
+		db '  del      | Lîscht einen Sektor',13,10
+		db '  run      | FÅhrt einen Sektor aus',13,10
+		db '  type     | Sektor Seitenweise anzeigen',13,10
 	     ;  db '  edit     | Ruft den Texteditor auf',13,10
 	     ;  db '  editor   | Ruft den Texteditor auf',13,10
 	     ;  db '  mkdir    | Erstellt ein Verzeichnes',13,10
@@ -2594,50 +2830,50 @@ DataArea:
 	     ;  db '  cd       | Wechselt das Verzeichnis',13,10
 	     ;  db '  copy     | Kopiert eine Datei',13,10
 	     ;  db '  move     | Verschiebt eine Datei',13,10
-	     ;  db '  del      | Loescht eine Datei / Ordner',13,10
+	     ;  db '  del      | Lîscht eine Datei / Ordner',13,10
 	     ;  db '  dir      | Zeigt den inhalt des Verzeichnes an',13,10
-	     ;  db '  fileinfo | Zeigt Informationen ueber eine Datei',13,10
-	     ;  db '  fi       | Zeigt Informationen ueber eine Datei',13,10
+	     ;  db '  fileinfo | Zeigt Informationen Åber eine Datei',13,10
+	     ;  db '  fi       | Zeigt Informationen Åber eine Datei',13,10
 		db '',13,10
-		db ' Bitte achten sie darauf das ALLE Zeichen kleingeschrieben werden muessen',13,10
+		db ' Bitte achten sie darauf das ALLE Zeichen kleingeschrieben werden mÅssen',13,10
 		db '',13,10,0
-	InfoStr db ' Hallo ich bin der Ersteller von WindowSystemOS und auch der gruender',13,10
+	InfoStr db ' Hallo ich bin der Ersteller von WindowSystemOS und auch der grÅnder',13,10
 		db ' von WindowSystemCompany, wenn ihr euch also fragt wer so ein mist',13,10
 		db ' programmiert, dann bin ich der schuldige :-)',13,10
 		db '',13,10
 		db ' Angefangen hat alles ganz harmlos, ehrlich ;-)',13,10
 		db ' Ich wollte ein Betriebssystem entwickeln das einzig und alleine in',13,10
-		db ' den Bootsektor einer Diskette passt, natuerlich nur mit ein paar',13,10
+		db ' den Bootsektor einer Diskette passt, natÅrlich nur mit ein paar',13,10
 		db ' Funktionen, aber als ich dann merkte das das doch nicht geht, weil',13,10
 		db ' 512 Byte einfach zu wenig sind habe ich mich entschlossen ( nach ein',13,10
-		db ' paar Ohrfeigen :-) ) die Grenzen zu loessen und nicht nur einen Sektor zu',13,10
+		db ' paar Ohrfeigen :-) ) die Grenzen zu lîssen und nicht nur einen Sektor zu',13,10
 		db ' nutzen sondern eine Datei !',13,10
 		db ' Ergebnis : Mein OS wird immer nur aus einer Kernel bestehen bis auch das',13,10
 		db ' ABSULUT nicht mehr geht ...',13,10,0
-	Change1 db ' Aenderungen von WindowSystemOS :',13,10
+	Change1 db ' énderungen von WindowSystemOS :',13,10
 		db '',13,10
-		db ' * = Geandert / Repariert',13,10
+		db ' * = GeÑndert / Repariert',13,10
 		db ' ! = Hinweis / Info',13,10
-		db ' + = Hinzugefuegt',13,10
+		db ' + = HinzugefÅgt',13,10
 		db ' - = Entfehrnt',13,10
 		db '',13,10
 		db '  WinSysOS v0.0.1 Beta [05.05.2011] 4365 Byte',13,10
 		db '  ---------------------------------------------',13,10
 		db '  [!] Erste Version',13,10
-		db '  [+] "RESET" zum zurueksetzen',13,10
+		db '  [+] "RESET" zum zurÅksetzen',13,10
 		db '  [+] "EXIT" zum runterfahren',13,10
 		db '  [+] "VER" zum herausfinden der OS-Version',13,10
 		db '  [+] "HELP" als kleine Hilfe',13,10
 		db '  [+] "INFO" ein paar Worte vom Programmierer',13,10
-		db '  [+] "CLS" um den Bildschirm zu loeschen',13,10
-		db '  [+] Color unterstuetzung',13,10
-		db '  [+] Back unterstuetzung bei Befehleingabe',13,10
+		db '  [+] "CLS" um den Bildschirm zu lîschen',13,10
+		db '  [+] Color unterstÅtzung',13,10
+		db '  [+] Back unterstÅtzung bei Befehleingabe',13,10
 		db '',13,10,0
-	Change2 db ' Aenderungen von WindowSystemOS :',13,10
+	Change2 db ' énderungen von WindowSystemOS :',13,10
 		db '',13,10
-		db ' * = Geandert / Repariert',13,10
+		db ' * = GeÑndert / Repariert',13,10
 		db ' ! = Hinweis / Info',13,10
-		db ' + = Hinzugefuegt',13,10
+		db ' + = HinzugefÅgt',13,10
 		db ' - = Entfehrnt',13,10
 		db '',13,10
 		db '  WinSysOS v0.0.2 Beta [01.07.2011] 7976 Byte',13,10
@@ -2648,11 +2884,11 @@ DataArea:
 		db '  [+] Pause funktion',13,10
 		db '  [+] Commander Prefix "CMD>"',13,10
 		db '',13,10,0
-	Change3 db ' Aenderungen von WindowSystemOS :',13,10
+	Change3 db ' énderungen von WindowSystemOS :',13,10
 		db '',13,10
-		db ' * = Geandert / Repariert',13,10
+		db ' * = GeÑndert / Repariert',13,10
 		db ' ! = Hinweis / Info',13,10
-		db ' + = Hinzugefuegt',13,10
+		db ' + = HinzugefÅgt',13,10
 		db ' - = Entfehrnt',13,10
 		db '',13,10
 		db '  WinSysOS v0.0.3 Beta [04.07.2011] 14267 Byte',13,10
@@ -2664,33 +2900,54 @@ DataArea:
 		db '  [+] "Write" zum Schreiben von Sektoren',13,10
 		db '  [+] "RawRead" zum Lesen von Sektoren ( rohformat )',13,10
 		db '  [+] Benutzerverwaltung mit Passwortschutz',13,10
-		db '  [+] "Registry" zum aendern der Benutzerdaten',13,10
+		db '  [+] "Registry" zum Ñndern der Benutzerdaten',13,10
 		db '  [+] Einstellungen werden gespeichert',13,10
 		db '',13,10,0
-	Change4 db ' Aenderungen von WindowSystemOS :',13,10
+	Change4 db ' énderungen von WindowSystemOS :',13,10
 		db '',13,10
-		db ' * = Geandert / Repariert',13,10
+		db ' * = GeÑndert / Repariert',13,10
 		db ' ! = Hinweis / Info',13,10
-		db ' + = Hinzugefuegt',13,10
+		db ' + = HinzugefÅgt',13,10
 		db ' - = Entfehrnt',13,10
 		db '',13,10
 		db '  WinSysOS v0.0.4 Beta [06.07.2011] 18533 Byte',13,10
 		db '  ---------------------------------------------',13,10
-	     ;  db '  [+] "RawWrite" zum Schreiben von Sektoren ( rohformat )',13,10
 		db '  [+] Value2String zur Zahlausgabe ( DEC )',13,10
 		db '  [+] Tastatur hat jetzt deutsches Layout',13,10
-		db '  [+] "Copy" um Sektoren kopieren zu koenen',13,10
-		db '  [+] "Move" um Sektoren verschieben zu koenen',13,10
-		db '  [+] "Del" um Sektoren loeschen zu koenen',13,10
-		db '  [+] "Run" um Sektoren ausfuehren zu koennen',13,10
-	     ;  db '  [+] Unterstuetzt das FAT12-Dateisystem',13,10
+		db '  [+] "Copy" um Sektoren kopieren zu kînen',13,10
+		db '  [+] "Move" um Sektoren verschieben zu kînen',13,10
+		db '  [+] "Del" um Sektoren lîschen zu kînen',13,10
+		db '  [+] "Run" um Sektoren ausfÅhren zu kînnen',13,10
+		db '',13,10,0
+	Change5 db ' énderungen von WindowSystemOS :',13,10
+		db '',13,10
+		db ' * = GeÑndert / Repariert',13,10
+		db ' ! = Hinweis / Info',13,10
+		db ' + = HinzugefÅgt',13,10
+		db ' - = Entfehrnt',13,10
+		db '',13,10
+		db '  WinSysOS v0.0.5 Beta [12.07.2011] 19820 Byte',13,10
+		db '  ---------------------------------------------',13,10
+		db '  [*] "Registry" passwort sicherung fuktioniert',13,10
+		db '  [*] Farbfehler in "HELP"',13,10
+		db '  [*] Farbfehler in "INFO"',13,10
+		db '  [*] "RUN" funktioniert jetzt',13,10
+		db '  [*] "UE" "OE" "AE" mit "ö" "ô" "é" ausgetauscht',13,10
+		db '  [*] Back unterstÅtzung repariert',13,10
+	     ;  db '  [+] "RawWrite" zum Schreiben von Sektoren ( rohformat )',13,10
+	     ;  db '  [+] "FullWrite" zum Schreiben von Sektoren ( 512 Byte )',13,10
+		db '  [+] Beispielprogramm "run 2879" ( im Sektor 2879 )',13,10
+		db '  [+] "FullRead" zum Lesen von Sektoren ( 512 Byte )',13,10
+		db '  [+] Passwort verschlÅsselung',13,10
+		db '  [+] "Type" zum Seitenweisse anzeigen eines Sektors',13,10
+	     ;  db '  [+] UnterstÅtzt das FAT12-Dateisystem',13,10
 	     ;  db '  [+] Texteditor zum bearbeiten von Datein',13,10
 	     ;  db '  [+] "Edit", "Editor" zum aufrufen vom Editor',13,10
 	     ;  db '  [+] "MkDir", "Md" zum erstellen von Ordnern',13,10
 	     ;  db '  [+] "Cd" zum wechseln vom Verzeichnis',13,10
-	     ;  db '  [+] "Copy" um Datein kopieren zu koenen',13,10
-	     ;  db '  [+] "Move" um Datein verschieben zu koenen',13,10
-	     ;  db '  [+] "Del" um Datein loeschen zu koenen',13,10
+	     ;  db '  [+] "Copy" um Datein kopieren zu kînen',13,10
+	     ;  db '  [+] "Move" um Datein verschieben zu kînen',13,10
+	     ;  db '  [+] "Del" um Datein lîschen zu kînen',13,10
 	     ;  db '  [+] "Dir" um Ordnerinhalte aufzulisten',13,10
 	     ;  db '  [+] "FileInfo", "Fi" um Dateieigenschaften anzuzeigen',13,10
 		db 0
@@ -2698,29 +2955,29 @@ DataArea:
 	BreakSt db 'Abgebrochen...',13,10,0
 	WaitStr db ' Weiter mit ENTER oder SPACE ...',13,10,0
 	WaitFlg db 07h,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h
-	Val8Str db 'Ungueltiges Zeichen, nur 0-9 und A-F erlaubt ( 16 Zeichen ) !!!',13,10,0
-	Val8Flg db 0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh
+	Val8Str db 'UngÅltiges Zeichen, nur 0-9 und A-F erlaubt ( 16 Zeichen ) !!!',13,10,0
+	Val8Flg db 0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh
 		db 07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Ch,07h,0Ch,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Fh,0Fh,0Fh
-	Val4Str db 'Ungueltiges Zeichen, nur 0-9 und A-F erlaubt ( 8 Zeichen ) !!!',13,10,0
-	Val4Flg db 0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh
+	Val4Str db 'UngÅltiges Zeichen, nur 0-9 und A-F erlaubt ( 8 Zeichen ) !!!',13,10,0
+	Val4Flg db 0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh
 		db 0Fh,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Ch,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Fh,0Fh,0Fh
-	Val2Str db 'Ungueltiges Zeichen, nur 0-9 und A-F erlaubt ( 4 Zeichen ) !!!',13,10,0
-	Val2Flg db 0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh
+	Val2Str db 'UngÅltiges Zeichen, nur 0-9 und A-F erlaubt ( 4 Zeichen ) !!!',13,10,0
+	Val2Flg db 0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh
 		db 0Fh,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Ch,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Fh,0Fh,0Fh
-	Val1Str db 'Ungueltiges Zeichen, nur 0-9 und A-F erlaubt ( 2 Zeichen ) !!!',13,10,0
-	Val1Flg db 0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh
+	Val1Str db 'UngÅltiges Zeichen, nur 0-9 und A-F erlaubt ( 2 Zeichen ) !!!',13,10,0
+	Val1Flg db 0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh
 		db 0Fh,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Ch,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Fh,0Fh,0Fh
-	Dec2Str db 'Ungueltiges Zeichen, nur 0-9 erlaubt ( max 65535 ) !!!',13,10,0
-	Dec2Flg db 0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh
+	Dec2Str db 'UngÅltiges Zeichen, nur 0-9 erlaubt ( max 65535 ) !!!',13,10,0
+	Dec2Flg db 0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh
 		db 0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Ch,07h,0Ch,0Ch,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Fh,0Fh,0Fh
-	ReadStr db 'Bitte ein Sektor zum lesen auswaehlen ( 0-999 = System ) ( max. 2879 ) : ',13,10,0
-	ReadFlg db 07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh
+	ReadStr db 'Bitte ein Sektor zum lesen auswÑhlen ( 0-999 = System ) ( max. 2879 ) : ',13,10,0
+	ReadFlg db 07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh
 		db 07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,07h,0Fh,07h
-	WriteSt db 'Bitte ein Sektor zum beschreiben auswaehlen ( 0-999 = System ) ( max. 2879 ) : ',13,10,0
-	WriteFg db 07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh
+	WriteSt db 'Bitte ein Sektor zum beschreiben auswÑhlen ( 0-999 = System ) ( max. 2879 ) : ',13,10,0
+	WriteFg db 07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh
 		db 0Fh,0Fh,0Fh,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,07h,0Fh,07h
-	RunStrg db 'Bitte ein Sektor zum ausfuehren auswaehlen ( 0-999 = System ) ( max. 2879 ) : ',13,10,0
-	RunFlag db 07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh
+	RunStrg db 'Bitte ein Sektor zum ausfÅhren auswÑhlen ( 0-999 = System ) ( max. 2879 ) : ',13,10,0
+	RunFlag db 07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh
 		db 0Fh,0Fh,0Fh,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,07h,0Fh,07h
 	NewLine db 13,10,0
 	RawStr1 db '         00h 01h 02h 03h 04h 05h 06h 07h 08h 09h 0Ah 0Bh 0Ch 0Dh 0Eh 0Fh',13,10
@@ -2729,23 +2986,23 @@ DataArea:
 	RawStr2 db '         00h 01h 02h 03h 04h 05h 06h 07h 08h 09h 0Ah 0Bh 0Ch 0Dh 0Eh 0Fh',13,10
 		db '  100h ',13,10,'  110h ',13,10,'  120h ',13,10,'  130h ',13,10,'  140h ',13,10,'  150h ',13,10,'  160h ',13,10,'  170h ',13,10
 		db '  180h ',13,10,'  190h ',13,10,'  1A0h ',13,10,'  1B0h ',13,10,'  1C0h ',13,10,'  1D0h ',13,10,'  1E0h ',13,10,'  1F0h ',13,10,0
-	NoSuppS db 'Dieser Befehl wird noch nicht unterstuetzt !!!',13,10,0
+	NoSuppS db 'Dieser Befehl wird noch nicht unterstÅtzt !!!',13,10,0
 	NoSuppF db 0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h
-		db 07h,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Fh,0Fh,0Fh
-	Copy1St db 'Bitte Quellsektor zum kopieren auswaehlen ( 0-999 = System ) ( max. 2879 ) : ',13,10,0
-	Copy1Fg db 07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh
+		db 07h,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Fh,0Fh,0Fh
+	Copy1St db 'Bitte Quellsektor zum kopieren auswÑhlen ( 0-999 = System ) ( max. 2879 ) : ',13,10,0
+	Copy1Fg db 07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh
 		db 0Fh,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,07h,0Fh,07h
-	Copy2St db 'Bitte Zielsektor zum kopieren auswaehlen ( 0-999 = System ) ( max. 2879 ) : ',13,10,0
-	Copy2Fg db 07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh
+	Copy2St db 'Bitte Zielsektor zum kopieren auswÑhlen ( 0-999 = System ) ( max. 2879 ) : ',13,10,0
+	Copy2Fg db 07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh
 		db 07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,07h,0Fh,07h
-	Move1St db 'Bitte Quellsektor zum verschieben auswaehlen ( 0-999 = System ) ( max. 2879 ) : ',13,10,0
-	Move1Fg db 07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh
+	Move1St db 'Bitte Quellsektor zum verschieben auswÑhlen ( 0-999 = System ) ( max. 2879 ) : ',13,10,0
+	Move1Fg db 07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh
 		db 0Fh,0Fh,0Fh,0Fh,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,07h,0Fh,07h
-	Move2St db 'Bitte Zielsektor zum verschieben auswaehlen ( 0-999 = System ) ( max. 2879 ) : ',13,10,0
-	Move2Fg db 07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh
+	Move2St db 'Bitte Zielsektor zum verschieben auswÑhlen ( 0-999 = System ) ( max. 2879 ) : ',13,10,0
+	Move2Fg db 07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh
 		db 0Fh,0Fh,0Fh,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,07h,0Fh,07h
-	DelStrg db 'Bitte ein Sektor zum loeschen auswaehlen ( 0-999 = System ) ( max. 2879 ) : ',13,10,0
-	DelFlag db 07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh
+	DelStrg db 'Bitte ein Sektor zum lîschen auswÑhlen ( 0-999 = System ) ( max. 2879 ) : ',13,10,0
+	DelFlag db 07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh
 		db 07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,07h,0Fh,07h
 	InFDStr db 'Bitte Quelldiskette einlagen ...',13,10,0
 	InFDFlg db 07h,07h,07h,07h,07h,07h,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h
@@ -2849,8 +3106,8 @@ InfoArea:
 ;   Color ( Hintergrund*16+Fordergrund )
 ;       0 = Schwarz        8 = Dunkelgrau
 ;       1 = Dunkelblau     9 = Blau
-;       2 = Dunkelgruen     A = Gruen
-;       3 = Blaugruen       B = Zyan
+;       2 = Dunkelgr¸n     A = Gruen
+;       3 = Blaugr¸n       B = Zyan
 ;       4 = Dunkelrot      C = Rot
 ;       5 = Lila           D = Magenta
 ;       6 = Ocker          E = Gelb
@@ -2873,6 +3130,14 @@ InfoArea:
 ;       80h     Laufwerk reagiert nicht
 ;       BBh     BIOS-Fehler
 ;       FFh     Nicht aufschluesselbarer Fehler
+
+;       ö = ‹
+;       ô = ÷
+;       é = ƒ
+;       Å = ¸
+;       î = ˆ
+;       Ñ = ‰
+;       · = ﬂ
 
 EditorTest:
 	MOV [FileSize], 512
