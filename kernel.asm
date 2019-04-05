@@ -1,6 +1,6 @@
 
-VERSION_STRING_1 equ '[Version: 0.0.6 Beta]'
-VERSION_STRING_2 equ 'v0.0.6 Beta'
+VERSION_STRING_1 equ '[Version: 0.0.7 Beta]'
+VERSION_STRING_2 equ 'v0.0.7 Beta'
 
 InitSegment:
 	MOV AX, CS		; Kopiere das CodeSegment nach AX
@@ -16,7 +16,7 @@ SetupInt21h:
 	MOV [FS:21h*4], EAX
 	STI
 
-LoadSettings:
+InitSettings:
 	MOV AX, 999
 	MOV BX, SettingsArea
 	MOV CX, 1
@@ -334,6 +334,26 @@ start:
 	MOV DI, Command
 	REP CMPSB
 	jz Type1
+	MOV CX, 9
+	MOV SI, ShutDwC
+	MOV DI, Command
+	REP CMPSB
+	jz ShutDown
+	MOV CX, 5
+	MOV SI, SaveCmd
+	MOV DI, Command
+	REP CMPSB
+	jz SaveSettings
+	MOV CX, 5
+	MOV SI, LoadCmd
+	MOV DI, Command
+	REP CMPSB
+	jz LoadSettings
+	MOV CX, 5
+	MOV SI, WelcomC
+	MOV DI, Command
+	REP CMPSB
+	jz Welcome
 	MOV CX, 1
 	MOV SI, NoneCmd
 	MOV DI, Command
@@ -507,6 +527,15 @@ Changes:
 	CALL WriteString
 	MOV SI, Change6
 	CALL WriteString
+	CALL KeyWait
+	CALL ClearScreen
+	MOV AX, 0
+	MOV BX, 0
+	CALL SetCursor
+	MOV SI, NewLine
+	CALL WriteString
+	MOV SI, Change7
+	CALL WriteString
 	MOV SI, NewLine
 	CALL WriteString
 	jmp start
@@ -643,9 +672,7 @@ Run:
 	MOV AX, CS
 	MOV DS, AX
 	MOV ES, AX
-	MOV AH, 00h
-	MOV AL, 03h
-	INT 10h
+	CALL SwitchToTextMode
 	MOV SI, NewLine
 	CALL WriteString
 	MOV SI, NewLine
@@ -1313,7 +1340,7 @@ Reset:
 	INT 19h
 	jmp ExitRepeat
 
-Exit:
+ShutDown:
 	MOV SI, NewLine
 	CALL WriteString
 	MOV AX, 999
@@ -1333,7 +1360,29 @@ Exit:
 	CLI
 	hlt
 	STI
-      ExitRepeat:
+	jmp ExitRepeat
+
+Exit:
+	MOV SI, NewLine
+	CALL WriteString
+	MOV CX, 28
+	MOV DX, ExitFlg
+	CALL SetFlag
+	MOV SI, ExitStr
+	CALL WriteString
+	MOV SI, NewLine
+	CALL WriteString
+	MOV AX, 03h
+	CALL SendAPMSignal
+	CLI
+	hlt
+	STI
+	jmp ExitRepeat
+
+ExitRepeat:
+	CLI
+	hlt
+	STI
 	MOV AX, 0
 	MOV BX, 0
 	CALL SetCursor
@@ -1344,6 +1393,32 @@ Exit:
 	MOV SI, 0
 	CALL ReadString
 	jmp ExitRepeat
+
+SaveSettings:
+	MOV CX, 53
+	MOV DX, SaveFlg
+	CALL SetFlag
+	MOV SI, SaveStr
+	CALL WriteString
+	MOV AX, 999
+	MOV BX, SettingsArea
+	MOV CX, 1
+	MOV DX, 0
+	CALL WriteFloppy
+	jmp start
+
+LoadSettings:
+	MOV CX, 49
+	MOV DX, LoadFlg
+	CALL SetFlag
+	MOV SI, LoadStr
+	CALL WriteString
+	MOV AX, 999
+	MOV BX, SettingsArea
+	MOV CX, 1
+	MOV DX, 0
+	CALL ReadFloppy
+	jmp Welcome
 
 WaitKey:
 	CALL KeyWait
@@ -1639,6 +1714,7 @@ ReadString4: ; DI = Buffer / CX = MaxLeang
       ReadNextLine2:
 	CMP DI, [temp1w]
 	ja ReadString4Next
+	MOV [TempWord], DI
 	STOSB			; AL speichern kopieren
 	MOV AH, 0Eh		; Funktion
 	MOV BH, 0		; Bildschirmseite
@@ -1746,6 +1822,7 @@ ReadString2: ; DI = Buffer
 	INT 10h 		; Schreiben
 	JMP ReadString2Next	 ; Naechster Durchlauf
       ReadNextLine:
+	MOV [TempWord], DI
 	STOSB			; AL speichern kopieren
 	MOV AH, 0Eh		; Funktion
 	MOV BH, 0		; Bildschirmseite
@@ -2835,6 +2912,318 @@ Word2Dec: ; AX = Value
       .end:
 	RETN ; BX = Buffer
 
+DrawLineX2: ; AX = X / BX = Y / CX = Leange / DX = Size
+	PUSH [temp4w]
+	PUSH [temp3w]
+	PUSH [temp2w]
+	PUSH [temp1w]
+	PUSH [temp0w]
+	MOV [temp4w], BX
+	MOV [temp3w], BX
+	MOV [temp0w], DX
+	PUSHAD
+	MOV AX, 16
+	DIV DL
+	MOV DX, 0
+	MOV DL, AL
+	MOV [temp1w], DX
+	POPAD
+	MOV [temp2w], 31
+      .next:
+	PUSHAD
+	PUSHAD
+	MOV BX, [temp4w]
+	MOV DX, [temp2w]
+	CALL DrawLineX
+	POPAD
+	PUSHAD
+	MOV BX, [temp3w]
+	MOV DX, [temp2w]
+	CALL DrawLineX
+	POPAD
+	MOV AX, [temp1w]
+	SUB [temp2w], AX
+	POPAD
+	CMP [temp0w], 0
+	je .end
+	SUB [temp0w], 1
+	CMP [temp0w], 0
+	je .end
+	SUB [temp4w], 1
+	ADD [temp3w], 1
+	jmp .next
+      .end:
+	POP [temp0w]
+	POP [temp1w]
+	POP [temp2w]
+	POP [temp3w]
+	POP [temp4w]
+	RETN
+
+DrawLineY2: ; AX = X / BX = Y / CX = Leange / DX = Size
+	PUSH [temp4w]
+	PUSH [temp3w]
+	PUSH [temp2w]
+	PUSH [temp1w]
+	PUSH [temp0w]
+	MOV [temp4w], AX
+	MOV [temp3w], AX
+	MOV [temp0w], DX
+	PUSHAD
+	MOV AX, 16
+	DIV DL
+	MOV DX, 0
+	MOV DL, AL
+	MOV [temp1w], DX
+	POPAD
+	MOV [temp2w], 31
+      .next:
+	PUSHAD
+	PUSHAD
+	MOV AX, [temp4w]
+	MOV DX, [temp2w]
+	CALL DrawLineY
+	POPAD
+	PUSHAD
+	MOV AX, [temp3w]
+	MOV DX, [temp2w]
+	CALL DrawLineY
+	POPAD
+	MOV AX, [temp1w]
+	SUB [temp2w], AX
+	POPAD
+	CMP [temp0w], 0
+	je .end
+	SUB [temp0w], 1
+	CMP [temp0w], 0
+	je .end
+	SUB [temp4w], 1
+	ADD [temp3w], 1
+	jmp .next
+      .end:
+	POP [temp0w]
+	POP [temp1w]
+	POP [temp2w]
+	POP [temp3w]
+	POP [temp4w]
+	RETN
+
+DrawLineX: ; AX = X / BX = Y / CX = Leange / DX = Color
+	PUSHAD
+	PUSH DX
+	MOV CX, AX
+	MOV DX, BX
+	MOV BH, 0
+	POP AX
+	MOV AH, 0Ch
+	INT 10h
+	POPAD
+	SUB CX, 1
+	ADD AX, 1
+	CMP CX, 0
+	je .end
+	jmp DrawLineX
+      .end:
+	RETN
+
+DrawLineY: ; AX = X / BX = Y / CX = Leange / DX = Color
+	PUSHAD
+	PUSH DX
+	MOV CX, AX
+	MOV DX, BX
+	MOV BH, 0
+	POP AX
+	MOV AH, 0Ch
+	INT 10h
+	POPAD
+	SUB CX, 1
+	ADD BX, 1
+	CMP CX, 0
+	je .end
+	jmp DrawLineY
+      .end:
+	RETN
+
+DrawPoint: ; AX = X / BX = Y / DX = Color
+	PUSHAD
+	PUSH DX
+	MOV CX, AX
+	MOV DX, BX
+	MOV BH, 0
+	POP AX
+	MOV AH, 0Ch
+	INT 10h
+	POPAD
+	RETN
+
+SwitchToGrafigMode:
+	MOV AH, 00h
+	MOV AL, 13h
+	INT 10h
+	RETN
+
+SwitchToTextMode:
+	MOV AH, 00h
+	MOV AL, 03h
+	INT 10h
+	RETN
+
+DrawWindow: ; AX = X / BX = Y / CX = Width / DX = Height
+	PUSHAD			; + 1
+	PUSH [temp0w]
+	PUSH [temp1w]
+	PUSH [temp2w]
+	PUSH [temp3w]
+	PUSH [temp4w]
+	PUSH [temp5w]
+	PUSH [temp6w]
+	PUSH [temp7w]
+	MOV [temp0w], 0
+	MOV [temp1w], 0
+	MOV [temp2w], 0
+	MOV [temp3w], 0
+	MOV [temp4w], 0
+	MOV [temp5w], 0
+	MOV [temp6w], 0
+	MOV [temp7w], 0
+	PUSHAD			; + 2
+	ADD AX, 3
+	ADD BX, 10
+	CALL DrawBox
+	POPAD			; - 2
+	ADD CX, 6
+	ADD DX, 13
+	PUSHAD			; + 2
+	PUSHAD			; + 3
+	MOV DX, 29
+	CALL DrawLineX
+	POPAD			; - 3
+	ADD BX, 1
+	PUSHAD			; + 3
+	MOV DX, 24
+	CALL DrawLineX
+	POPAD			; - 3
+	ADD BX, 1
+	MOV [temp0w], 25
+      .loop1:
+	PUSHAD			; + 3
+	MOV DX, [temp0w]
+	CALL DrawLineX
+	POPAD			; - 3
+	ADD BX, 1
+	ADD [temp0w], 1
+	CMP [temp0w], 31
+	je .endloop1
+	jmp .loop1
+      .endloop1:
+	PUSHAD			; + 3
+	MOV DX, 31
+	CALL DrawLineX
+	POPAD			; - 3
+	ADD BX, 1
+	PUSHAD			; + 3
+	MOV DX, 24
+	CALL DrawLineX
+	POPAD			; - 3
+	POPAD			; - 2
+	MOV [temp0w], DX
+	ADD [temp0w], BX
+	SUB [temp0w], 3
+	PUSHAD			; + 2
+	PUSHAD			; + 3
+	MOV BX, [temp0w]
+	MOV DX, 24
+	CALL DrawLineX
+	ADD [temp0w], 1
+	POPAD			; - 3
+	PUSHAD			; + 3
+	MOV BX, [temp0w]
+	MOV DX, 29
+	CALL DrawLineX
+	ADD [temp0w], 1
+	POPAD			; - 3
+	PUSHAD			; + 3
+	MOV BX, [temp0w]
+	MOV DX, 31
+	CALL DrawLineX
+	ADD [temp0w], 1
+	POPAD			; - 3
+	POPAD			; - 2
+	PUSHAD			; + 2
+	ADD BX, 10
+	PUSHAD			; + 3
+	MOV CX, DX
+	SUB CX, 13
+	MOV DX, 24
+	CALL DrawLineY
+	POPAD			; - 3
+	ADD AX, 1
+	PUSHAD			; + 3
+	MOV CX, DX
+	SUB CX, 13
+	MOV DX, 24
+	CALL DrawLineY
+	POPAD			; - 3
+	ADD AX, 1
+	PUSHAD			; + 3
+	MOV CX, DX
+	SUB CX, 13
+	MOV DX, 24
+	CALL DrawLineY
+	POPAD			; - 3
+	POPAD			; - 2
+	PUSHAD			; + 2
+	ADD BX, 10
+	ADD AX, CX
+	SUB AX, 3
+	PUSHAD			; + 3
+	MOV CX, DX
+	SUB CX, 13
+	MOV DX, 24
+	CALL DrawLineY
+	POPAD			; - 3
+	ADD AX, 1
+	PUSHAD			; + 3
+	MOV CX, DX
+	SUB CX, 13
+	MOV DX, 24
+	CALL DrawLineY
+	POPAD			; - 3
+	ADD AX, 1
+	PUSHAD			; + 3
+	MOV CX, DX
+	SUB CX, 13
+	MOV DX, 24
+	CALL DrawLineY
+	POPAD			; - 3
+	POPAD			; - 2
+	POP [temp7w]
+	POP [temp6w]
+	POP [temp5w]
+	POP [temp4w]
+	POP [temp3w]
+	POP [temp2w]
+	POP [temp1w]
+	POP [temp0w]
+	POPAD			; - 2
+	RETN
+
+DrawBox: ; AX = X / BX = Y / CX = Width / DX = Height
+	PUSHAD
+      .next:
+	PUSHAD
+	MOV DX, 29
+	CALL DrawLineX
+	POPAD
+	ADD BX, 1
+	SUB DX, 1
+	CMP DX, 0
+	je .end
+	jmp .next
+      .end:
+	POPAD
+	RETN
+
 ClearBuffer: ; No
 	PUSH EAX
 	PUSH CX
@@ -3001,6 +3390,10 @@ DataArea:
 	TypeCmd db 'type',0
 	typeCmd db 'type',32
 	ReStarC db 'restart',0
+	ShutDwC db 'shutdown',0
+	SaveCmd db 'save',0
+	LoadCmd db 'load',0
+	WelcomC db 'welcome',0
 	NoneCmd db 0
 	PrefixS db 'CMD> ',0
       StringArea:
@@ -3029,7 +3422,7 @@ DataArea:
 		db '',13,10
 		db '  Befehl   | ErklÑrung',13,10
 		db '  ---------+---------------------------------',13,10
-		db '  exit     | FÑhrt WinSysOS herunter',13,10
+		db '  exit     | FÑhrt WinSysOS herunter ( ohne Einstellungen zu speichern )',13,10
 		db '  ver      | Zeigt die Versionsnummer an',13,10
 		db '  help     | Zeigt diese Hilfe an',13,10
 		db '  info     | Zeigt Informationen zu WinSysOS an',13,10
@@ -3044,8 +3437,6 @@ DataArea:
 		db '',13,10
 		db '  Befehl   | ErklÑrung',13,10
 		db '  ---------+---------------------------------',13,10
-	     ;  db '  rawwrite | Text auf einen Sektor schreiben ( rohformat )',13,10
-	     ;  db '  fullwrite| Text auf einen Sektor schreiben ( 512 Byte )',13,10
 		db '  fullread | Sektor auslesen und ausgeben ( 512 Byte )',13,10
 		db '  copy     | Kopiert einen Sektor',13,10
 		db '  move     | Verschiebt einen Sektor',13,10
@@ -3054,6 +3445,12 @@ DataArea:
 		db '  type     | Sektor Seitenweise anzeigen',13,10
 		db '  reset    | Setzt das System zurÅck ( ohne Einstellungen zu speichern )',13,10
 		db '  restart  | Setzt das System zurÅck',13,10
+		db '  shutdown | FÑhrt WinSysOS herunter',13,10
+		db '  welcome  | WÑchselt zum Startbildschirm',13,10
+		db '  save     | Speichert die Benutzereinstellungen',13,10
+		db '  load     | LÑd die Benutzereinstellungen',13,10
+	     ;  db '  rawwrite | Text auf einen Sektor schreiben ( rohformat )',13,10
+	     ;  db '  fullwrite| Text auf einen Sektor schreiben ( 512 Byte )',13,10
 	     ;  db '  edit     | Ruft den Texteditor auf',13,10
 	     ;  db '  editor   | Ruft den Texteditor auf',13,10
 	     ;  db '  mkdir    | Erstellt ein Verzeichnes',13,10
@@ -3111,7 +3508,7 @@ DataArea:
 		db '  ---------------------------------------------',13,10
 		db '  [*] "INFO" zeigt jetzt wirklich Text',13,10
 		db '  [*] Komplett neues Style / Farbgebung',13,10
-		db '  [+] "CHANGES" zum verfolgen der Anderungen',13,10
+		db '  [+] "CHANGES" zum verfolgen der énderungen',13,10
 		db '  [+] Pause funktion',13,10
 		db '  [+] Commander Prefix "CMD>"',13,10
 		db '',13,10,0
@@ -3177,7 +3574,7 @@ DataArea:
 		db ' + = HinzugefÅgt',13,10
 		db ' - = Entfehrnt',13,10
 		db '',13,10
-		db '  WinSysOS v0.0.6 Beta [14.07.2011] 19820 Byte',13,10
+		db '  WinSysOS v0.0.6 Beta [14.07.2011] 21051 Byte',13,10
 		db '  ---------------------------------------------',13,10
 		db '  [*] "Reset" in "Help" eingefÅgt',13,10
 		db '  [*] Texteingabe repariert',13,10
@@ -3190,8 +3587,27 @@ DataArea:
 		db '  [!] Sektoren 2000-2879 = Programme',13,10
 		db '  [+] Indexsektor "type 1000" ( im Sektor 1000 )',13,10
 		db '  [+] Beispielprogramm "run 2001" ( im Sektor 2001 )',13,10
-		db '  [+] ASmallOS "run 2002" ( im Sektor 2001 )',13,10
+		db '  [+] ASmallOS "run 2002" ( im Sektor 2002 )',13,10
 		db '  [+] "Reset" zum zurÅksetzen ( ohne Einstellungen zu speichern )',13,10
+		db 0
+	Change7 db ' énderungen von WindowSystemOS :',13,10
+		db '',13,10
+		db ' * = GeÑndert / Repariert',13,10
+		db ' ! = Hinweis / Info',13,10
+		db ' + = HinzugefÅgt',13,10
+		db ' - = Entfehrnt',13,10
+		db '',13,10
+		db '  WinSysOS v0.0.7 Beta [15.07.2011] 23194 Byte',13,10
+		db '  ---------------------------------------------',13,10
+		db '  [*] Beispielprogramm 2001 optimiert',13,10
+		db '  [*] Befehl "Exit" in "ShutDown" umbenannt',13,10
+		db '  [*] Schreibfehler bei "Changes" "Version 0.0.2"',13,10
+		db '  [*] Schreibfehler bei "Changes" "Version 0.0.6"',13,10
+		db '  [*] Texteingabe repariert',13,10
+		db '  [+] "Exit" zum herunterfahren ( ohne Einstellungen zu speichern )',13,10
+		db '  [+] "Welcome" um zum Startbildschirm zu wÑchseln',13,10
+		db '  [+] "Save" um die Benutzereinstellungenn zu speichern',13,10
+		db '  [+] "Load" um die Benutzereinstellungen zu laden',13,10
 	     ;  db '  [+] "RawWrite" zum Schreiben von Sektoren ( rohformat )',13,10
 	     ;  db '  [+] "FullWrite" zum Schreiben von Sektoren ( 512 Byte )',13,10
 	     ;  db '  [+] UnterstÅtzt das FAT12-Dateisystem',13,10
@@ -3265,6 +3681,10 @@ DataArea:
 	SpaceSt db ' ( 0-999 = System ) ( 2000-2879 = Programme ) ( max. 2879 )',13,10,0
 	SpaceFg db 07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Eh,07h,0Eh,0Eh,0Eh,0Eh,0Eh,0Eh,0Eh,0Eh
 		db 0Eh,07h,0Eh,07h,0Eh,0Eh,0Eh,0Eh,0Eh,0Eh,0Eh,0Eh,0Eh,07h,0Eh,07h,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh
+	SaveStr db 'Einstellungen werden gespeichert ... Bitte warten ...',13,10,0
+	SaveFlg db 0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,07h,07h,07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h
+	LoadStr db 'Einstellungen werden geladen ... Bitte warten ...',13,10,0
+	LoadFlg db 0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,07h,07h,07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h
 
 
 

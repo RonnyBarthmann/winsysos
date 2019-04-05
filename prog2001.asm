@@ -2,6 +2,9 @@ MOV AX, CS
 MOV DS, AX
 MOV ES, AX
 
+MOV SI, LoadString
+CALL WriteString
+
 MOV [tempDw], 512
 MOV [tempCw], 2755
 
@@ -27,37 +30,17 @@ MOV [tempCw], 2755
 	MOV AL, 13h
 	INT 10h
 
-	MOV [tempF], 0
 	MOV [tempEw], 0
 	MOV [tempFw], 199
 	MOV SI, Picture
     .y:
       .x:
 	MOV AH, 0Ch
-	MOV AL, [tempF]    ; Farbe
 	LODSB	 ; Farbe
 	MOV BH, 0      ; Seite
 	MOV CX, [tempEw]     ; X-Pos
 	MOV DX, [tempFw]     ; Y-Pos
-	PUSHAD
 	INT 10h
-	POPAD
-	CMP [tempEw], 16
-	jb .newcolor1
-	jmp .oldcolor1
-      .newcolor1:
-	CMP [tempFw], 16
-	jb .newcolor2
-	jmp .oldcolor1
-      .newcolor2:
-	MOV AX, [tempFw]
-	SHL AX, 4
-	ADD AX, [tempEw]
-	MOV [tempF], AL
-	jmp .oldcolor2
-      .oldcolor1:
-	MOV [tempF], 0
-      .oldcolor2:
 	CMP [tempEw], 319
 	jb .nextx
 	CMP [tempFw], 0
@@ -132,6 +115,19 @@ WaitForKey: ; No
       WaitForKeyEnd:
 	RETN ; No               ; Funktionsruecksprung
 
+WriteString: ; SI = String
+	LODSB			; Zeichen nach AL kopieren
+	CMP AL, 0		; Ist AL = 0 ?
+	JE WriteStringEnd	; dann Abbruch
+	MOV AH, 0Eh		; Funktion
+	MOV BH, 0		; Bildschirmseite
+	INT 10h 		; Schreiben
+	JMP WriteString 	; Naechster Durchlauf
+      WriteStringEnd:
+	RETN ; No               ; Funktionsruecksprung
+
+LoadString	db 'Lade Bildsektoren ... Bitte warten ...',13,10,0
+
 Variables:
 TempWord	dw 0
 TempByte	db 0
@@ -142,7 +138,6 @@ tempCw		dw 0
 tempDw		dw 0
 tempEw		dw 0
 tempFw		dw 0
-tempF		db 0
 
 TIMES 512-($-$$) DB 0
 
