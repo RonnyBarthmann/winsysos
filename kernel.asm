@@ -1,6 +1,6 @@
 
-VERSION_STRING_1 equ '[Version: 0.0.5 Beta]'
-VERSION_STRING_2 equ 'v0.0.5 Beta'
+VERSION_STRING_1 equ '[Version: 0.0.6 Beta]'
+VERSION_STRING_2 equ 'v0.0.6 Beta'
 
 InitSegment:
 	MOV AX, CS		; Kopiere das CodeSegment nach AX
@@ -69,13 +69,15 @@ Welcome:
 
 
 start:
+	CALL ClearBuffer
 	MOV AX, CS
 	MOV DS, AX
 	MOV ES, AX
 	MOV SI, PrefixS
 	CALL WriteString
 	MOV DI, Command
-	CALL ReadString
+	MOV CX, 74
+	CALL ReadString3
 	MOV SI, NewLine
 	CALL WriteString
 	MOV CX, 6
@@ -322,6 +324,11 @@ start:
 	MOV DI, Command
 	REP CMPSB
 	jz Type2
+	MOV CX, 8
+	MOV SI, ReStarC
+	MOV DI, Command
+	REP CMPSB
+	jz Restart
 	MOV CX, 5
 	MOV SI, TypeCmd
 	MOV DI, Command
@@ -338,6 +345,7 @@ start:
 	MOV SI, Unknown
 	CALL WriteString
 	jmp start
+
 
 Registry:
       .false:
@@ -361,7 +369,8 @@ Registry:
 	MOV SI, NameString
 	CALL WriteString
 	MOV DI, Name
-	CALL ReadString
+	MOV CX, 39
+	CALL ReadString3
 	MOV SI, NewLine
 	CALL WriteString
 	MOV SI, PasswordString
@@ -489,6 +498,15 @@ Changes:
 	CALL WriteString
 	MOV SI, Change5
 	CALL WriteString
+	CALL KeyWait
+	CALL ClearScreen
+	MOV AX, 0
+	MOV BX, 0
+	CALL SetCursor
+	MOV SI, NewLine
+	CALL WriteString
+	MOV SI, Change6
+	CALL WriteString
 	MOV SI, NewLine
 	CALL WriteString
 	jmp start
@@ -502,10 +520,15 @@ Read1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 72
+	MOV CX, 55
 	MOV DX, ReadFlg
 	CALL SetFlag
 	MOV SI, ReadStr
+	CALL WriteString
+	MOV CX, 59
+	MOV DX, SpaceFg
+	CALL SetFlag
+	MOV SI, SpaceSt
 	CALL WriteString
 	MOV SI, ChoiceS
 	CALL WriteString
@@ -539,10 +562,15 @@ Write1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 78
+	MOV CX, 56
 	MOV DX, WriteFg
 	CALL SetFlag
 	MOV SI, WriteSt
+	CALL WriteString
+	MOV CX, 59
+	MOV DX, SpaceFg
+	CALL SetFlag
+	MOV SI, SpaceSt
 	CALL WriteString
 	MOV SI, ChoiceS
 	CALL WriteString
@@ -557,7 +585,8 @@ Write:
 	MOV SI, NewLine
 	CALL WriteString
 	MOV DI, Buffer
-	CALL ReadString2
+	MOV CX, 512
+	CALL ReadString4
 	POP AX
 	MOV BX, Buffer
 	MOV CX, 1
@@ -578,10 +607,15 @@ Run1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 70
+	MOV CX, 53
 	MOV DX, RunFlag
 	CALL SetFlag
 	MOV SI, RunStrg
+	CALL WriteString
+	MOV CX, 59
+	MOV DX, SpaceFg
+	CALL SetFlag
+	MOV SI, SpaceSt
 	CALL WriteString
 	MOV SI, ChoiceS
 	CALL WriteString
@@ -590,7 +624,7 @@ Run1:
 	MOV BX, Buffer
 	CALL Dec2Word
 Run:
-	MOV BX, 7C0h
+	MOV BX, 2000h
 	MOV ES, BX
 	MOV BX, 0
 	MOV CX, 1
@@ -601,15 +635,22 @@ Run:
 	MOV SI, NewLine
 	CALL WriteString
 	PUSH CS
-	PUSH start
-	PUSH word 07C0h
+	PUSH .resume
+	PUSH word 2000h
 	PUSH word 0000h
 	RETF
+      .resume:
+	MOV AX, CS
+	MOV DS, AX
+	MOV ES, AX
+	MOV AH, 00h
+	MOV AL, 03h
+	INT 10h
 	MOV SI, NewLine
 	CALL WriteString
 	MOV SI, NewLine
 	CALL WriteString
-	jmp start
+	jmp Welcome
 
 RawRead2:
 	MOV BX, Command
@@ -620,10 +661,15 @@ RawRead1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 72
+	MOV CX, 55
 	MOV DX, ReadFlg
 	CALL SetFlag
 	MOV SI, ReadStr
+	CALL WriteString
+	MOV CX, 59
+	MOV DX, SpaceFg
+	CALL SetFlag
+	MOV SI, SpaceSt
 	CALL WriteString
 	MOV SI, ChoiceS
 	CALL WriteString
@@ -761,10 +807,15 @@ RawWrite1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 78
+	MOV CX, 56
 	MOV DX, WriteFg
 	CALL SetFlag
 	MOV SI, WriteSt
+	CALL WriteString
+	MOV CX, 59
+	MOV DX, SpaceFg
+	CALL SetFlag
+	MOV SI, SpaceSt
 	CALL WriteString
 	MOV SI, ChoiceS
 	CALL WriteString
@@ -793,10 +844,15 @@ FullRead1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 72
+	MOV CX, 55
 	MOV DX, ReadFlg
 	CALL SetFlag
 	MOV SI, ReadStr
+	CALL WriteString
+	MOV CX, 59
+	MOV DX, SpaceFg
+	CALL SetFlag
+	MOV SI, SpaceSt
 	CALL WriteString
 	MOV SI, ChoiceS
 	CALL WriteString
@@ -831,10 +887,15 @@ FullWrite1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 78
+	MOV CX, 56
 	MOV DX, WriteFg
 	CALL SetFlag
 	MOV SI, WriteSt
+	CALL WriteString
+	MOV CX, 59
+	MOV DX, SpaceFg
+	CALL SetFlag
+	MOV SI, SpaceSt
 	CALL WriteString
 	MOV SI, ChoiceS
 	CALL WriteString
@@ -863,10 +924,15 @@ Type1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 72
+	MOV CX, 55
 	MOV DX, ReadFlg
 	CALL SetFlag
 	MOV SI, ReadStr
+	CALL WriteString
+	MOV CX, 59
+	MOV DX, SpaceFg
+	CALL SetFlag
+	MOV SI, SpaceSt
 	CALL WriteString
 	MOV SI, ChoiceS
 	CALL WriteString
@@ -900,10 +966,15 @@ Editor1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 72
+	MOV CX, 55
 	MOV DX, ReadFlg
 	CALL SetFlag
 	MOV SI, ReadStr
+	CALL WriteString
+	MOV CX, 59
+	MOV DX, SpaceFg
+	CALL SetFlag
+	MOV SI, SpaceSt
 	CALL WriteString
 	MOV SI, ChoiceS
 	CALL WriteString
@@ -963,10 +1034,15 @@ CopyFile1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 76
+	MOV CX, 57
 	MOV DX, Copy1Fg
 	CALL SetFlag
 	MOV SI, Copy1St
+	CALL WriteString
+	MOV CX, 59
+	MOV DX, SpaceFg
+	CALL SetFlag
+	MOV SI, SpaceSt
 	CALL WriteString
 	MOV SI, ChoiceS
 	CALL WriteString
@@ -980,10 +1056,15 @@ CopyFile1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 75
+	MOV CX, 47
 	MOV DX, Copy2Fg
 	CALL SetFlag
 	MOV SI, Copy2St
+	CALL WriteString
+	MOV CX, 59
+	MOV DX, SpaceFg
+	CALL SetFlag
+	MOV SI, SpaceSt
 	CALL WriteString
 	MOV SI, ChoiceS
 	CALL WriteString
@@ -1050,10 +1131,15 @@ MoveFile1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 79
+	MOV CX, 60
 	MOV DX, Move1Fg
 	CALL SetFlag
 	MOV SI, Move1St
+	CALL WriteString
+	MOV CX, 59
+	MOV DX, SpaceFg
+	CALL SetFlag
+	MOV SI, SpaceSt
 	CALL WriteString
 	MOV SI, ChoiceS
 	CALL WriteString
@@ -1067,10 +1153,15 @@ MoveFile1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 78
+	MOV CX, 47
 	MOV DX, Move2Fg
 	CALL SetFlag
 	MOV SI, Move2St
+	CALL WriteString
+	MOV CX, 59
+	MOV DX, SpaceFg
+	CALL SetFlag
+	MOV SI, SpaceSt
 	CALL WriteString
 	MOV SI, ChoiceS
 	CALL WriteString
@@ -1101,6 +1192,12 @@ MoveFile:
 	MOV CX, 1
 	MOV DX, 0
 	CALL ReadFloppy
+	CALL ClearBuffer
+	POP AX
+	MOV BX, Buffer
+	MOV CX, 1
+	MOV DX, 0
+	CALL WriteFloppy
 	PUSHAD
 	MOV SI, NewLine
 	CALL WriteString
@@ -1111,12 +1208,6 @@ MoveFile:
 	CALL WriteString
 	CALL WaitKey
 	POPAD
-	POP AX
-	MOV BX, Buffer
-	MOV CX, 1
-	MOV DX, 0
-	CALL WriteFloppy
-	CALL ClearBuffer
 	POP AX
 	MOV BX, Buffer
 	MOV CX, 1
@@ -1135,10 +1226,15 @@ DelFile1:
 	MOV SI, NewLine
 	CALL WriteString
 	CALL InitFloppy
-	MOV CX, 74
+	MOV CX, 53
 	MOV DX, DelFlag
 	CALL SetFlag
 	MOV SI, DelStrg
+	CALL WriteString
+	MOV CX, 59
+	MOV DX, SpaceFg
+	CALL SetFlag
+	MOV SI, SpaceSt
 	CALL WriteString
 	MOV SI, ChoiceS
 	CALL WriteString
@@ -1186,7 +1282,7 @@ FileInfo1:
 	CALL WriteString
 	jmp start
 
-Reset:
+Restart:
 	MOV SI, NewLine
 	CALL WriteString
 	MOV AX, 999
@@ -1194,6 +1290,19 @@ Reset:
 	MOV CX, 1
 	MOV DX, 0
 	CALL WriteFloppy
+	MOV CX, 29
+	MOV DX, ResetFg
+	CALL SetFlag
+	MOV SI, ResetSt
+	CALL WriteString
+	MOV SI, NewLine
+	CALL WriteString
+	INT 19h
+	jmp ExitRepeat
+
+Reset:
+	MOV SI, NewLine
+	CALL WriteString
 	MOV CX, 29
 	MOV DX, ResetFg
 	CALL SetFlag
@@ -1494,6 +1603,125 @@ TypeString: ; SI = String
 	POPAD
 	JMP TypeStringNext	   ; Naechster Durchlauf
       TypeStringEnd:
+	RETN ; No               ; Funktionsruecksprung
+
+ReadString4: ; DI = Buffer / CX = MaxLeang
+	PUSH [TempWord]
+	PUSH [temp0w]
+	PUSH [temp1w]
+	MOV [TempWord], DI
+	MOV [temp0w], DI
+	ADD [temp0w], CX
+	SUB [temp0w], 1
+	MOV [temp1w], DI
+	ADD [temp1w], CX
+	SUB [temp1w], 2
+      ReadString4Next:
+	MOV AH, 0		; Funktion
+	INT 16h 		; Zeichen einlesen
+	CMP AL, 27		; Ist AL = 27 ?
+	JE ReadString4End	 ; dann Abbruch
+	CMP AL, 13		; Ist AL = 13 ?
+	JE ReadNextLine2	; dann Neue Zeile
+	CMP AL, 8		; Ist AL = 8 ?
+	JE ClearChar4		 ; dann Zeichen loeschen
+	CMP DI, [temp0w]
+	ja ReadString4Next
+	MOV AH, 0
+	MOV BX, Keyboard_DE
+	ADD BX, AX
+	MOV AL, [BX]
+	STOSB			; AL speichern kopieren
+	MOV AH, 0Eh		; Funktion
+	MOV BH, 0		; Bildschirmseite
+	INT 10h 		; Schreiben
+	JMP ReadString4Next	 ; Naechster Durchlauf
+      ReadNextLine2:
+	CMP DI, [temp1w]
+	ja ReadString4Next
+	STOSB			; AL speichern kopieren
+	MOV AH, 0Eh		; Funktion
+	MOV BH, 0		; Bildschirmseite
+	INT 10h 		; Schreiben
+	MOV AL, 10
+	STOSB			; AL speichern kopieren
+	MOV AH, 0Eh		; Funktion
+	MOV BH, 0		; Bildschirmseite
+	INT 10h 		; Schreiben
+	JMP ReadString4Next	 ; Naechster Durchlauf
+      ClearChar4:
+	CMP [TempWord], DI
+	je ReadString4Next
+	SUB DI, 1		; Zeichen Loeschen
+	MOV AH, 0Eh		; Funktion
+	MOV BH, 0		; Bildschirmseite
+	INT 10h 		; Schreiben
+	MOV AL, 32		; Loeschen
+	MOV AH, 0Eh		; Funktion
+	MOV BH, 0		; Bildschirmseite
+	INT 10h 		; Schreiben
+	MOV AL, 8		; Zurueck
+	MOV AH, 0Eh		; Funktion
+	MOV BH, 0		; Bildschirmseite
+	INT 10h 		; Schreiben
+	JMP ReadString4Next	 ; Naechster Durchlauf
+      ReadString4End:
+	MOV AL, 0		; Stringende
+	STOSB			; AL speichern kopieren
+	POP [temp1w]
+	POP [temp0w]
+	POP [TempWord]
+	RETN ; No               ; Funktionsruecksprung
+
+
+ReadString3: ; DI = Buffer / CX = MaxLeang
+	PUSH [TempWord]
+	PUSH [temp0w]
+	MOV [TempWord], DI
+	MOV [temp0w], DI
+	ADD [temp0w], CX
+	SUB [temp0w], 1
+      ReadString3Next:
+	MOV AH, 0		; Funktion
+	INT 16h 		; Zeichen einlesen
+	CMP AL, 27		; Ist AL = 27 ?
+	JE ReadString3End	 ; dann Abbruch
+	CMP AL, 13		; Ist AL = 13 ?
+	JE ReadString3End	 ; dann Abbruch
+	CMP AL, 8		; Ist AL = 8 ?
+	JE ClearChar3		 ; dann Zeichen loeschen
+	CMP DI, [temp0w]
+	ja ReadString3Next
+	MOV AH, 0
+	MOV BX, Keyboard_DE
+	ADD BX, AX
+	MOV AL, [BX]
+	STOSB			; AL speichern kopieren
+	MOV AH, 0Eh		; Funktion
+	MOV BH, 0		; Bildschirmseite
+	INT 10h 		; Schreiben
+	JMP ReadString3Next	 ; Naechster Durchlauf
+      ClearChar3:
+	CMP [TempWord], DI
+	je ReadString3Next
+	SUB DI, 1		; Zeichen Loeschen
+	MOV AH, 0Eh		; Funktion
+	MOV BH, 0		; Bildschirmseite
+	INT 10h 		; Schreiben
+	MOV AL, 32		; Loeschen
+	MOV AH, 0Eh		; Funktion
+	MOV BH, 0		; Bildschirmseite
+	INT 10h 		; Schreiben
+	MOV AL, 8		; Zurueck
+	MOV AH, 0Eh		; Funktion
+	MOV BH, 0		; Bildschirmseite
+	INT 10h 		; Schreiben
+	JMP ReadString3Next	 ; Naechster Durchlauf
+      ReadString3End:
+	MOV AL, 0		; Stringende
+	STOSB			; AL speichern kopieren
+	POP [temp0w]
+	POP [TempWord]
 	RETN ; No               ; Funktionsruecksprung
 
 ReadString2: ; DI = Buffer
@@ -2772,6 +3000,7 @@ DataArea:
 	fWriteC db 'fullwrite',32
 	TypeCmd db 'type',0
 	typeCmd db 'type',32
+	ReStarC db 'restart',0
 	NoneCmd db 0
 	PrefixS db 'CMD> ',0
       StringArea:
@@ -2823,6 +3052,8 @@ DataArea:
 		db '  del      | Lîscht einen Sektor',13,10
 		db '  run      | FÅhrt einen Sektor aus',13,10
 		db '  type     | Sektor Seitenweise anzeigen',13,10
+		db '  reset    | Setzt das System zurÅck ( ohne Einstellungen zu speichern )',13,10
+		db '  restart  | Setzt das System zurÅck',13,10
 	     ;  db '  edit     | Ruft den Texteditor auf',13,10
 	     ;  db '  editor   | Ruft den Texteditor auf',13,10
 	     ;  db '  mkdir    | Erstellt ein Verzeichnes',13,10
@@ -2934,12 +3165,35 @@ DataArea:
 		db '  [*] "RUN" funktioniert jetzt',13,10
 		db '  [*] "UE" "OE" "AE" mit "ö" "ô" "é" ausgetauscht',13,10
 		db '  [*] Back unterstÅtzung repariert',13,10
-	     ;  db '  [+] "RawWrite" zum Schreiben von Sektoren ( rohformat )',13,10
-	     ;  db '  [+] "FullWrite" zum Schreiben von Sektoren ( 512 Byte )',13,10
 		db '  [+] Beispielprogramm "run 2879" ( im Sektor 2879 )',13,10
 		db '  [+] "FullRead" zum Lesen von Sektoren ( 512 Byte )',13,10
 		db '  [+] Passwort verschlÅsselung',13,10
 		db '  [+] "Type" zum Seitenweisse anzeigen eines Sektors',13,10
+		db '',13,10,0
+	Change6 db ' énderungen von WindowSystemOS :',13,10
+		db '',13,10
+		db ' * = GeÑndert / Repariert',13,10
+		db ' ! = Hinweis / Info',13,10
+		db ' + = HinzugefÅgt',13,10
+		db ' - = Entfehrnt',13,10
+		db '',13,10
+		db '  WinSysOS v0.0.6 Beta [14.07.2011] 19820 Byte',13,10
+		db '  ---------------------------------------------',13,10
+		db '  [*] "Reset" in "Help" eingefÅgt',13,10
+		db '  [*] Texteingabe repariert',13,10
+		db '  [*] GeÑnderte Speicherbereiche',13,10
+		db '  [*] Neues Style / Farbgebung',13,10
+		db '  [*] Beispielprogramm von 2879 nach 2000 verschoben',13,10
+		db '  [*] Befehl "Reset" in "Restart" umbenannt',13,10
+		db '  [!] Sektoren    0- 999 = System',13,10
+		db '  [!] Sektoren 1000-1999 = Benutzer',13,10
+		db '  [!] Sektoren 2000-2879 = Programme',13,10
+		db '  [+] Indexsektor "type 1000" ( im Sektor 1000 )',13,10
+		db '  [+] Beispielprogramm "run 2001" ( im Sektor 2001 )',13,10
+		db '  [+] ASmallOS "run 2002" ( im Sektor 2001 )',13,10
+		db '  [+] "Reset" zum zurÅksetzen ( ohne Einstellungen zu speichern )',13,10
+	     ;  db '  [+] "RawWrite" zum Schreiben von Sektoren ( rohformat )',13,10
+	     ;  db '  [+] "FullWrite" zum Schreiben von Sektoren ( 512 Byte )',13,10
 	     ;  db '  [+] UnterstÅtzt das FAT12-Dateisystem',13,10
 	     ;  db '  [+] Texteditor zum bearbeiten von Datein',13,10
 	     ;  db '  [+] "Edit", "Editor" zum aufrufen vom Editor',13,10
@@ -2951,7 +3205,7 @@ DataArea:
 	     ;  db '  [+] "Dir" um Ordnerinhalte aufzulisten',13,10
 	     ;  db '  [+] "FileInfo", "Fi" um Dateieigenschaften anzuzeigen',13,10
 		db 0
-	ChoiceS db 'Bitte Auswealen : ',0
+	ChoiceS db 'Bitte auswÑhlen : ',0
 	BreakSt db 'Abgebrochen...',13,10,0
 	WaitStr db ' Weiter mit ENTER oder SPACE ...',13,10,0
 	WaitFlg db 07h,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h
@@ -2970,15 +3224,15 @@ DataArea:
 	Dec2Str db 'UngÅltiges Zeichen, nur 0-9 erlaubt ( max 65535 ) !!!',13,10,0
 	Dec2Flg db 0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh
 		db 0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Ch,07h,0Ch,0Ch,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Fh,0Fh,0Fh
-	ReadStr db 'Bitte ein Sektor zum lesen auswÑhlen ( 0-999 = System ) ( max. 2879 ) : ',13,10,0
-	ReadFlg db 07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh
-		db 07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,07h,0Fh,07h
-	WriteSt db 'Bitte ein Sektor zum beschreiben auswÑhlen ( 0-999 = System ) ( max. 2879 ) : ',13,10,0
-	WriteFg db 07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh
-		db 0Fh,0Fh,0Fh,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,07h,0Fh,07h
-	RunStrg db 'Bitte ein Sektor zum ausfÅhren auswÑhlen ( 0-999 = System ) ( max. 2879 ) : ',13,10,0
-	RunFlag db 07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh
-		db 0Fh,0Fh,0Fh,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,07h,0Fh,07h
+	ReadStr db 'Bitte ein Sektor zum einlesen und anzeigen auswÑhlen : ',13,10,0
+	ReadFlg db 07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,07h
+		db 07h,07h,07h,07h,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h
+	WriteSt db 'Bitte ein Sektor zum eingeben und speichern auswÑhlen : ',13,10,0
+	WriteFg db 07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,07h
+		db 07h,07h,07h,07h,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h
+	RunStrg db 'Bitte ein Sektor zum laden und ausfÅhren auswÑhlen : ',13,10,0
+	RunFlag db 07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Bh,0Bh,0Bh,0Bh,0Bh,07h,07h,07h,07h
+		db 07h,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h
 	NewLine db 13,10,0
 	RawStr1 db '         00h 01h 02h 03h 04h 05h 06h 07h 08h 09h 0Ah 0Bh 0Ch 0Dh 0Eh 0Fh',13,10
 		db '   00h ',13,10,'   10h ',13,10,'   20h ',13,10,'   30h ',13,10,'   40h ',13,10,'   50h ',13,10,'   60h ',13,10,'   70h ',13,10
@@ -2989,25 +3243,28 @@ DataArea:
 	NoSuppS db 'Dieser Befehl wird noch nicht unterstÅtzt !!!',13,10,0
 	NoSuppF db 0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,07h,07h,07h,07h,07h
 		db 07h,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Fh,0Fh,0Fh
-	Copy1St db 'Bitte Quellsektor zum kopieren auswÑhlen ( 0-999 = System ) ( max. 2879 ) : ',13,10,0
-	Copy1Fg db 07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh
-		db 0Fh,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,07h,0Fh,07h
-	Copy2St db 'Bitte Zielsektor zum kopieren auswÑhlen ( 0-999 = System ) ( max. 2879 ) : ',13,10,0
-	Copy2Fg db 07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh
-		db 07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,07h,0Fh,07h
-	Move1St db 'Bitte Quellsektor zum verschieben auswÑhlen ( 0-999 = System ) ( max. 2879 ) : ',13,10,0
-	Move1Fg db 07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh
-		db 0Fh,0Fh,0Fh,0Fh,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,07h,0Fh,07h
-	Move2St db 'Bitte Zielsektor zum verschieben auswÑhlen ( 0-999 = System ) ( max. 2879 ) : ',13,10,0
-	Move2Fg db 07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh
-		db 0Fh,0Fh,0Fh,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,07h,0Fh,07h
-	DelStrg db 'Bitte ein Sektor zum lîschen auswÑhlen ( 0-999 = System ) ( max. 2879 ) : ',13,10,0
-	DelFlag db 07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh
-		db 07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,07h,0Fh,07h
+	Copy1St db 'Bitte ein Quellsektor zum laden und kopieren auswÑhlen : ',13,10,0
+	Copy1Fg db 07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,07h,07h,07h,07h,07h,0Bh,0Bh,0Bh,0Bh
+		db 0Bh,07h,07h,07h,07h,07h,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h
+	Copy2St db 'Bitte ein Zielsektor zum speichern auswÑhlen : ',13,10,0
+	Copy2Fg db 07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,07h,07h,07h,07h,07h,0Bh,0Bh,0Bh,0Bh,0Bh
+		db 0Bh,0Bh,0Bh,0Bh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h
+	Move1St db 'Bitte ein Quellsektor zum laden und verschieben auswÑhlen : ',13,10,0
+	Move1Fg db 07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,07h,07h,07h,07h,07h,0Bh,0Bh,0Bh,0Bh
+		db 0Bh,07h,07h,07h,07h,07h,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h
+	Move2St db 'Bitte ein Zielsektor zum speichern auswÑhlen : ',13,10,0
+	Move2Fg db 07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,07h,07h,07h,07h,07h,0Bh,0Bh,0Bh,0Bh,0Bh
+		db 0Bh,0Bh,0Bh,0Bh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h
+	DelStrg db 'Bitte ein Sektor zum endgÅltigem lîschen auswÑhlen : ',13,10,0
+	DelFlag db 07h,07h,07h,07h,07h,07h,07h,07h,07h,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch
+		db 0Ch,0Ch,07h,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h
 	InFDStr db 'Bitte Quelldiskette einlagen ...',13,10,0
 	InFDFlg db 07h,07h,07h,07h,07h,07h,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h
 	OutFDSt db 'Bitte Zieldiskette einlegen ...',13,10,0
 	OutFDFg db 07h,07h,07h,07h,07h,07h,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,0Bh,07h,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,0Fh,07h,07h,07h,07h
+	SpaceSt db ' ( 0-999 = System ) ( 2000-2879 = Programme ) ( max. 2879 )',13,10,0
+	SpaceFg db 07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Ch,0Ch,0Ch,0Ch,0Ch,0Ch,07h,0Ch,07h,0Eh,07h,0Eh,0Eh,0Eh,0Eh,0Eh,0Eh,0Eh,0Eh
+		db 0Eh,07h,0Eh,07h,0Eh,0Eh,0Eh,0Eh,0Eh,0Eh,0Eh,0Eh,0Eh,07h,0Eh,07h,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh,0Fh,0Fh,0Fh,07h,0Fh
 
 
 
